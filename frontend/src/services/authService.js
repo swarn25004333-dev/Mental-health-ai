@@ -15,6 +15,9 @@ export const authService = {
         data: {
           full_name: fullName,
         },
+        // Use the site where the signup happened, instead of Supabase's
+        // default Site URL (which might still be localhost during development).
+        emailRedirectTo: `${window.location.origin}/login`,
       },
     });
 
@@ -104,4 +107,3 @@ export const authService = {
     return profileData || authData.user;
   },
 };
-
