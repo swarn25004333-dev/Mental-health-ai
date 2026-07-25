@@ -103,6 +103,9 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  // A Supabase user object can exist before email confirmation, but that user
+  // must not be able to enter the protected application.
+  const isEmailVerified = Boolean(user?.email_confirmed_at);
 
   return (
     <AuthContext.Provider
@@ -111,7 +114,8 @@ export const AuthProvider = ({ children }) => {
         profile,
         session,
         token: session?.access_token || null,
-        isAuthenticated: !!user,
+        isAuthenticated: Boolean(session && isEmailVerified),
+        isEmailVerified,
         loading,
         login,
         signup,
