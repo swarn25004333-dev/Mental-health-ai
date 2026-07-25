@@ -6,6 +6,7 @@ import ProtectedRoute from '../components/common/ProtectedRoute';
 // Pages
 import Login from '../pages/Login';
 import Signup from '../pages/Signup';
+import VerifyEmail from '../pages/VerifyEmail';
 import Dashboard from '../pages/Dashboard';
 import Chatbot from '../pages/Chatbot';
 import MoodTracker from '../pages/MoodTracker';
@@ -22,6 +23,7 @@ const AppRoutes = () => {
       {/* Public Auth Routes */}
       <Route path="/login" element={<Login />} />
       <Route path="/signup" element={<Signup />} />
+      <Route path="/verify-email" element={<VerifyEmail />} />
 
       {/* Protected App Routes enclosed in MainLayout */}
       <Route element={<ProtectedRoute />}>

@@ -1,13 +1,15 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import PasswordInput from './PasswordInput';
 import Button from '../common/Button';
-import { FiUser, FiMail, FiAlertCircle, FiCheckCircle } from 'react-icons/fi';
+import { FiUser, FiMail, FiAlertCircle } from 'react-icons/fi';
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 const SignupForm = () => {
   const { signup } = useAuth();
+  const navigate = useNavigate();
 
   const [formData, setFormData] = useState({
     fullName: '',
@@ -19,7 +21,6 @@ const SignupForm = () => {
   const [errors, setErrors] = useState({});
   const [authError, setAuthError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [confirmationSent, setConfirmationSent] = useState(false);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -66,26 +67,14 @@ const SignupForm = () => {
 
     try {
       await signup(formData.fullName.trim(), formData.email, formData.password);
-      setConfirmationSent(true);
+      sessionStorage.setItem('pendingVerificationEmail', formData.email);
+      navigate('/verify-email', { replace: true });
     } catch (err) {
       setAuthError(err.message || 'Failed to create account. Please try again.');
     } finally {
       setIsLoading(false);
     }
   };
-
-  if (confirmationSent) {
-    return (
-      <div className="rounded-xl border border-emerald-400/30 bg-emerald-500/10 p-5 text-center">
-        <FiCheckCircle className="mx-auto mb-3 h-9 w-9 text-emerald-400" />
-        <h2 className="text-lg font-semibold text-emerald-300">Check your email</h2>
-        <p className="mt-2 text-sm leading-6 text-slate-300">
-          We sent a verification link to <span className="font-semibold">{formData.email}</span>.
-          Verify your email before signing in to access the dashboard.
-        </p>
-      </div>
-    );
-  }
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
