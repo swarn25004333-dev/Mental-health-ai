@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import Card from '../components/common/Card';
 import Button from '../components/common/Button';
 import questionnaireService from '../services/questionnaireService';
+import { formatErrorMessage } from '../utils/formatError';
 import { FiClipboard, FiInfo, FiCheckCircle, FiAlertTriangle, FiRefreshCw } from 'react-icons/fi';
 
 const phqOptions = [
@@ -58,15 +59,7 @@ const Phq2 = () => {
       setResult(responseData);
     } catch (err) {
       console.error('Failed to submit PHQ-2:', err);
-      const score = parseInt(q1, 10) + parseInt(q2, 10);
-      setResult({
-        score,
-        recommendation:
-          score >= 3
-            ? 'Score indicates possible depressive symptoms. A professional psychological evaluation is recommended.'
-            : 'Score indicates low risk. Continue maintaining healthy routine and self-care practices.',
-        created_at: new Date().toISOString(),
-      });
+      setError(formatErrorMessage(err, 'Unable to save your assessment. Please try again.'));
     } finally {
       setLoading(false);
     }

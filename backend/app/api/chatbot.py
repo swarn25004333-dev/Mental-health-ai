@@ -31,6 +31,7 @@ from app.services.chat_history_service import chat_history_service
 from app.core.logging import get_logger
 from app.core.rate_limiter import limiter, get_user_key
 from app.core.config import settings
+from app.database.supabase import set_request_access_token, reset_request_access_token
 
 logger = get_logger("chatbot_api")
 
@@ -49,55 +50,34 @@ def get_current_user_id(
         raise HTTPException(status_code=401, detail="Authentication required.")
 
     token = credentials.credentials.strip()
+    token_context = set_request_access_token(token)
     logger.info(f"Received auth token (length: {len(token)}, start: '{token[:10]}...')")
 
-    # 1. Try validating via Supabase client auth API
     try:
-        from app.database.supabase import get_supabase_client
-        client = get_supabase_client()
-        if client:
-            user_response = client.auth.get_user(token)
-            if user_response and user_response.user:
-                logger.info(f"Supabase auth.get_user succeeded for user_id: {user_response.user.id}")
-                return user_response.user.id
-            else:
+        # 1. Try validating via Supabase client auth API
+        try:
+            from app.database.supabase import get_supabase_client
+            client = get_supabase_client()
+            if client:
+                user_response = client.auth.get_user(token)
+                if user_response and user_response.user:
+                    logger.info(f"Supabase auth.get_user succeeded for user_id: {user_response.user.id}")
+                    yield user_response.user.id
+                    return
                 logger.warning("Supabase auth.get_user returned no user object.")
-        else:
-            logger.warning("Supabase client is not initialized.")
-    except Exception as e:
-        logger.warning(f"Supabase auth.get_user exception: {type(e).__name__}: {str(e)}")
+            else:
+                logger.warning("Supabase client is not initialized.")
+        except Exception as e:
+            logger.warning(f"Supabase auth.get_user exception: {type(e).__name__}: {str(e)}")
 
-    # 2. Fallback: decode JWT payload manually
-    try:
-        import base64, json, time
-        parts = token.split(".")
-        if len(parts) == 3:
-            payload_b64 = parts[1]
-            payload_b64 += "=" * (-len(payload_b64) % 4)
-            payload = json.loads(base64.urlsafe_b64decode(payload_b64))
-
-            user_id = payload.get("sub")
-            exp = payload.get("exp")
-            iss = payload.get("iss")
-            aud = payload.get("aud")
-
-            logger.info(f"JWT payload claims parsed — sub: {user_id}, iss: {iss}, aud: {aud}, exp: {exp}")
-
-            if exp and time.time() > exp:
-                logger.warning(f"JWT token expired. exp: {exp}, current_time: {time.time()}")
-                raise HTTPException(status_code=401, detail="Token has expired.")
-
-            if user_id:
-                logger.info(f"Successfully validated user_id from JWT payload: {user_id}")
-                return str(user_id)
-        else:
-            logger.warning(f"Token does not have 3 JWT parts (got {len(parts)} parts).")
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"JWT manual decode exception: {type(e).__name__}: {str(e)}")
-
-    raise HTTPException(status_code=401, detail="Invalid or expired token.")
+        # Do not fall back to decoding the JWT payload locally: decoding does
+        # not verify its signature and would allow a forged `sub` claim.  The
+        # Supabase auth endpoint is the authority for token validation.
+        if not settings.SUPABASE_URL or not (settings.SUPABASE_ANON_KEY or settings.SUPABASE_SERVICE_ROLE_KEY):
+            raise HTTPException(status_code=503, detail="Authentication service is not configured.")
+        raise HTTPException(status_code=401, detail="Invalid or expired token.")
+    finally:
+        reset_request_access_token(token_context)
 
 
 @router.post("/chat", response_model=ChatResponse, summary="Send a message to the AI companion")

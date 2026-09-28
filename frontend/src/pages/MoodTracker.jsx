@@ -4,6 +4,7 @@ import Button from '../components/common/Button';
 import MoodSelector from '../components/mood/MoodSelector';
 import TodayMoodCard from '../components/mood/TodayMoodCard';
 import moodService from '../services/moodService';
+import { formatErrorMessage } from '../utils/formatError';
 import { FiSmile, FiBookOpen, FiCheckCircle, FiAlertCircle, FiRefreshCw } from 'react-icons/fi';
 
 const MoodTracker = () => {
@@ -90,8 +91,7 @@ const MoodTracker = () => {
       }, 5000);
     } catch (err) {
       console.error('Failed to save mood:', err);
-      const msg = err.response?.data?.detail || 'Failed to save your mood. Please try again.';
-      setErrorMessage(msg);
+      setErrorMessage(formatErrorMessage(err, 'Failed to save your mood. Please try again.'));
     } finally {
       setLoading(false);
     }
